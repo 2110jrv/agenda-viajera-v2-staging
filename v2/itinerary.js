@@ -1,5 +1,5 @@
 import {occursOn,categoryFor} from './domain.js';
-export const chronological=(a,b)=>{const x=a.start?Date.parse(a.start):Infinity,y=b.start?Date.parse(b.start):Infinity;return (x-y)||((a.added_order||'').localeCompare(b.added_order||''))||String(a.id).localeCompare(String(b.id));};
+export const chronological=(a,b)=>{const x=a.order_without_time?Infinity:a.start?Date.parse(a.start):Infinity,y=b.order_without_time?Infinity:b.start?Date.parse(b.start):Infinity;return (x-y)||((a.added_order||'').localeCompare(b.added_order||''))||String(a.id).localeCompare(String(b.id));};
 export function isContext(event){
  const title=event.title||'',multiday=Date.parse(event.end)-Date.parse(event.start)>=86400000;
  const pass=/\b(?:pase|pass|abono)\b/i.test(title)&&categoryFor(event)==='Transportation';
