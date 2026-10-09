@@ -22,7 +22,7 @@ export function scheduledInstant(day,time,timezone=TRIP.timezone){
 }
 export function dayPlan(events,records,day,locations={}){
  const pins=records.filter(r=>r.kind==='places_of_interest'&&!r.deleted_at),schedules=records.filter(r=>r.kind==='day_pin_schedule'&&!r.deleted_at&&r.data.active&&r.data.date===day),scheduled=new Set(records.filter(r=>r.kind==='day_pin_schedule'&&!r.deleted_at&&r.data.active).map(r=>r.data.pin_id));
- const cities=visitedCities(events,records,day,locations).cities,keys=new Set(cities.map(cityKey)),calendarPins=new Set(),places=pins.map(r=>({...r.data,id:r.id}));
+ const cities=cityList([...visitedCities(events,records,day,locations).cities,...schedules.map(s=>pinLocality(pins.find(p=>p.id===s.data.pin_id)?.data||{}))]),keys=new Set(cities.map(cityKey)),calendarPins=new Set(),places=pins.map(r=>({...r.data,id:r.id}));
  for(const e of events.filter(e=>occursOn(e,day))){
   const refs=[{...e,gps:gpsFor(e)},...(e.visited_places||[]),...[e.origin_pin||e.originPin||e.origin_pin_id,e.destination_pin||e.destinationPin||e.destination_pin_id].filter(Boolean).map(p=>typeof p==='object'?p:{pin_id:p}),...[...mapsUrls(e.location),...mapsUrls(e.description)].map(url=>({url,gps:locations[url]?.point}))];
   for(const ref of refs)for(const p of matchPin(ref,places).candidates)calendarPins.add(p.id);
