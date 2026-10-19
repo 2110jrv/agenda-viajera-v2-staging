@@ -1,5 +1,6 @@
 import{saveNarration}from './pin-content.js';
-import{pinJsonSnapshot,pinJsonSection,mountPinJson,pinJsonAccess,savePinJson}from './pin-json.js';
+import{pinJsonSection,mountPinJson}from './pin-json.js';
+import{fullSnapshot as pinJsonSnapshot,fullAccess as pinJsonAccess,saveFull as savePinJson,validateFull,collapsePinSections}from './pin-json-full.js';
 import{LocalConditions}from './local-conditions.js';
 import {TravelUI} from './travel-ui.js';
 import {guideFor,guideSpeech,renderGuide,guideImportForm,planGuideBatch,importGuides,guideId,sameGuide} from './place-guide.js';
@@ -219,7 +220,7 @@ async function renderScreen() {
   if(route==='itinerary')app.insertAdjacentHTML('beforeend',travel.dayPanel());
   if(route==='event'){const e=events.find(x=>x.id===id);if(e&&/transport|tren|train|bus|barco|ferry|flight|vuelo|united|\bUA\s*\d/i.test(categoryFor(e)+' '+e.title))app.insertAdjacentHTML('beforeend',travel.transport(e));}
   travel.mount();
-  if(route==='place'&&records.some(r=>r.id===id&&r.kind==='places_of_interest'&&!r.deleted_at)){voicePin=id;app.insertAdjacentHTML('beforeend','<div data-pin-audio="'+id+'">'+travel.pinAudio(id)+'</div>'+renderGuide(guideFor(records,id))+travel.radiusPanel(id)+narrationEditor(id)+'<details><summary>Voz y velocidad del dispositivo</summary><div id="guide-voice">'+renderVoice(voice)+'</div></details>'+pinJsonSection());mountPinJson(app,()=>loadPinJson(id),args=>savePinJson({...args,remote,store}));}
+  if(route==='place'&&records.some(r=>r.id===id&&r.kind==='places_of_interest'&&!r.deleted_at)){voicePin=id;app.insertAdjacentHTML('beforeend','<div data-pin-audio="'+id+'">'+travel.pinAudio(id)+'</div>'+renderGuide(guideFor(records,id))+travel.radiusPanel(id)+narrationEditor(id)+'<details><summary>Voz y velocidad del dispositivo</summary><div id="guide-voice">'+renderVoice(voice)+'</div></details>'+pinJsonSection());mountPinJson(app,()=>loadPinJson(id),args=>savePinJson({...args,remote,store}),validateFull);collapsePinSections(app);}
   if(route==='preferences'&&canSchedule(scheduleAccess,store.activeUser))app.insertAdjacentHTML('beforeend',guideImportForm()+travel.geometryForm());
   if(route==='event'){const warnings=events.find(x=>x.id===id)?.warnings||[];if(warnings.length)app.insertAdjacentHTML('beforeend',`<p class="warning">${warnings.map(escape).join('<br>')}</p>`);}
   if(route==='document'&&documents.some(x=>x.id===id))app.insertAdjacentHTML('beforeend',`<div class="actions">${button('trash-document','Enviar archivo a la papelera de Google Drive',id,'danger')}</div>`);

@@ -111,6 +111,15 @@ export class LocalStore {
     });
     return state;
   }
+  async ingestPinJsonFull(pin,guide){
+    if(pin?.kind!=='places_of_interest'||guide&&(guide.kind!=='app_settings'||guide.data?.place_id!==pin.id))throw Error('Respuesta del lugar inválida.');
+    const rows=[pin,...guide?[guide]:[]];let state='confirmed';
+    await this.transaction(['records','outbox'],tx=>{
+      const pending=tx.objectStore('outbox').getAll(),current=rows.map(r=>tx.objectStore('records').get(r.id));let n=0;
+      const apply=()=>{if(++n!==current.length+1)return;if(pending.result.some(o=>rows.some(r=>r.id===o.record_id))){state='pending';return;}if(current.some((req,i)=>req.result&&(req.result.deleted_at||req.result.version>rows[i].version))){state='newer';return;}for(const r of rows)tx.objectStore('records').put(r);};
+      pending.onsuccess=apply;for(const req of current)req.onsuccess=apply;
+    });return state;
+  }
   async purge() { await this.transaction(STORES, tx => { for (const name of STORES) tx.objectStore(name).clear(); }); }
   async resolve(conflict, choice) {
     if(this.pinMode&&!this.activeUser?.authorized)throw Error('Necesitamos verificar tu acceso.');
