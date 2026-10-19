@@ -101,6 +101,16 @@ export class LocalStore {
       };
     });
   }
+  async ingestPinJson(record,pinId) {
+    if(record?.kind!=='app_settings'||record.data?.type!=='place_guide'||record.data.place_id!==pinId)throw Error('Respuesta de guía no válida.');
+    let state='confirmed';
+    await this.transaction(['records','outbox'],tx=>{
+      const current=tx.objectStore('records').get(record.id),pending=tx.objectStore('outbox').getAll();let completed=0;
+      const apply=()=>{if(++completed!==2)return;if(pending.result.some(row=>[pinId,record.id].includes(row.record_id))){state='pending';return;}if(current.result&&(current.result.deleted_at||current.result.version>record.version)){state='newer';return;}tx.objectStore('records').put(record);};
+      current.onsuccess=apply;pending.onsuccess=apply;
+    });
+    return state;
+  }
   async purge() { await this.transaction(STORES, tx => { for (const name of STORES) tx.objectStore(name).clear(); }); }
   async resolve(conflict, choice) {
     if(this.pinMode&&!this.activeUser?.authorized)throw Error('Necesitamos verificar tu acceso.');
