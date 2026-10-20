@@ -182,7 +182,7 @@ async function documentList(){const available=new Set(await new OfflineDocuments
 async function downloadDocuments(files,fullListing=false){offlineDocuments ||= new OfflineDocuments(store,google);const result=await offlineDocuments.download(files,p=>{docsProgress=p;const node=document.querySelector('#documents-progress');if(node)node.textContent=p.completed+' / '+p.total;},fullListing);docsProgress=null;if(result.failures.length)notice(result.completed+' / '+result.total+' disponibles. Algunas descargas no terminaron; puedes reintentar.');else notice('✓ '+result.completed+' documentos disponibles offline');return result;}
 function conflictValue(conflict,value){if(['amount','amount_original','cost','amount_base','actual_base_amount','base_amount'].includes(conflict.field)){const record=records.find(r=>r.id===conflict.record_id);return formatMoney(value,['amount_base','actual_base_amount','base_amount'].includes(conflict.field)?'USD':record?.data.currency_original||record?.data.currency||'USD');}return JSON.stringify(value??null);}
 async function render({resetFields=false}={}){
- if(render.route===location.hash&&travel.audioLibraryBusy(app)){render.deferred=true;updateConnection();return;}render.deferred=false;
+ if((PIN_MODE?store.activeUser?.authorized:!!authSession)&&render.route===location.hash&&travel.audioLibraryBusy(app)){render.deferred=true;updateConnection();return;}render.deferred=false;
  const state=render.route===location.hash?captureScreenState(app):null;
  if(state&&resetFields)state.fields=[];placeNav.beforeRender();await renderScreen();placeNav.baseline();render.route=location.hash;restoreScreenState(app,state);
  if(render.pending){restoreScreenState(app,render.pending);render.pending=null;}placeNav.afterRender();
