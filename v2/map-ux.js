@@ -2,7 +2,7 @@ import{dateKey}from'./domain.js';
 import{icon}from'./visual.js';import{combinedPlaces,nearbyPlaces,distanceMeters,distanceLabel,POI_LABELS,poiKey,parsePlacesJson,assignPlace}from'./poi.js';import{mapsPinUrl}from'./places.js';import{pointFromMapsUrl,allowedMapsUrl,locationLabel}from'./location.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const iconButton=(action,label,type,id='')=>`<button class="icon-button" data-action="${action}" data-id="${esc(id)}" aria-label="${esc(label)}" title="${esc(label)}">${icon(type)}</button>`;
-const iconLink=(url,label,type)=>`<a class="icon-button" href="${esc(url)}" aria-label="${esc(label)}" title="${esc(label)}" ${url.startsWith('https:')?'target="_blank" rel="noopener"':''}>${icon(type)}</a>`;
+const iconLink=(url,label,type)=>`<a class="icon-button" href="${esc(url)}" aria-label="${esc(label)}" title="${esc(label)}" ${label==='Atrás'?'data-place-back':''} ${url.startsWith('https:')?'target="_blank" rel="noopener"':''}>${icon(type)}</a>`;
 export class MapUX{
  constructor(store,events,records,day,notice){Object.assign(this,{store,events,records,day,notice});this.mode='trip';this.label='';this.position=null;this.selected=null;this.tab='form';this.preview=[];this.json='';this.expanded=new Map();}
  all(){return combinedPlaces(this.events(),this.records());}

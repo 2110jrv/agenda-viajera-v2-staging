@@ -94,6 +94,8 @@ export function mountPinJson(root,load,persist=null,validate=validatePinJson){
  const details=root.querySelector('.pin-json-editor');if(!details)return;
  const input=details.querySelector('textarea'),status=details.querySelector('.pin-json-status'),diff=details.querySelector('.pin-json-diff'),save=details.querySelector('[data-json=save]'),buttons=[...details.querySelectorAll('[data-json]')];
  let base,loading,validatedText=null,requestId=null,busy=false,ready=false;
+ details.hasUnsavedChanges=()=>Boolean(base&&input.value!==base.text);
+ details.isBusy=()=>busy;
  const lock=value=>{busy=value;input.disabled=value;for(const b of buttons)b.disabled=value;save.disabled=value||!ready;};
  const invalidate=()=>{diff.replaceChildren();ready=false;save.disabled=true;validatedText=null;requestId=null;};
  const restore=()=>{input.value=base.text;invalidate();status.textContent='Original restaurado. Sin cambios pendientes en el editor.';};

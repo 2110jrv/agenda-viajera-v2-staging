@@ -1,9 +1,12 @@
 import {optionalPlace} from './poi.js';
-let previous=null;
+let previous=null,pendingView=null;
+export function captureTripMap(){return previous?{key:previous.key,center:{lat:previous.map.getCenter().lat,lng:previous.map.getCenter().lng},zoom:previous.map.getZoom(),positionKey:previous.positionKey}:null;}
+export function restoreTripMap(view){pendingView=view;}
 
 export function mountTripMap(root,places,onSelect,key,userLocation=null,selectedId=null){
  const L=globalThis.L;if(!root||!L)return;
- const saved=previous?.key===key?{center:previous.map.getCenter(),zoom:previous.map.getZoom(),positionKey:previous.positionKey}:null;previous?.map.remove();
+ const restored=pendingView?.key===key?pendingView:null;pendingView=null;
+ const saved=restored||(previous?.key===key?{center:previous.map.getCenter(),zoom:previous.map.getZoom(),positionKey:previous.positionKey}:null);previous?.map.remove();
  const map=L.map(root,{scrollWheelZoom:true,zoomControl:true});previous={map,key,markers:new Map()};
  if(navigator.onLine)L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
  const bounds=[];
@@ -12,8 +15,8 @@ export function mountTripMap(root,places,onSelect,key,userLocation=null,selected
   marker.on('click',()=>onSelect(event.id));
   previous.markers.set(event.id,marker);
  });
- if(userLocation){L.circleMarker([userLocation.lat,userLocation.lng],{radius:8,color:'#fff',weight:3,fillColor:'#397dea',fillOpacity:1}).addTo(map).bindTooltip('Tú estás aquí');if(saved?.positionKey!==`${userLocation.lat},${userLocation.lng}`)map.setView([userLocation.lat,userLocation.lng],14);else if(saved)map.setView(saved.center,saved.zoom);previous.positionKey=`${userLocation.lat},${userLocation.lng}`;}else if(saved)map.setView(saved.center,saved.zoom);else if(bounds.length)map.fitBounds(bounds,{padding:[35,35],maxZoom:15});else map.setView([0,0],2);
- selectTripPin(selectedId);setTimeout(()=>map.invalidateSize(),0);
+ if(userLocation){L.circleMarker([userLocation.lat,userLocation.lng],{radius:8,color:'#fff',weight:3,fillColor:'#397dea',fillOpacity:1}).addTo(map).bindTooltip('Tú estás aquí');if(restored)map.setView(saved.center,saved.zoom,{animate:false});else if(saved?.positionKey!==`${userLocation.lat},${userLocation.lng}`)map.setView([userLocation.lat,userLocation.lng],14);else if(saved)map.setView(saved.center,saved.zoom);previous.positionKey=`${userLocation.lat},${userLocation.lng}`;}else if(saved)map.setView(saved.center,saved.zoom,{animate:false});else if(bounds.length)map.fitBounds(bounds,{padding:[35,35],maxZoom:15});else map.setView([0,0],2);
+ selectTripPin(selectedId);setTimeout(()=>map.invalidateSize({pan:false}),0);
  return map;
 }
 export function closeTripMap(){previous?.map.remove();previous=null;}
