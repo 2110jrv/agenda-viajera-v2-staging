@@ -18,7 +18,9 @@ function delta(before,after,prefix,changes,guide=false,depth=0){
  }return out;
 }
 function safeTree(v,depth=0){return depth<=12&&(Array.isArray(v)?v.every(x=>safeTree(x,depth+1)):!obj(v)||Object.entries(v).every(([k,x])=>!protectedGuide(k)&&safeTree(x,depth+1)));}
+function validNote(value){if(typeof value!=='string'||value!==''&&(!/^Actualizado: \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(value)||Number.isNaN(Date.parse(value.slice(13).replace(' ','T')+':00Z'))||new Date(value.slice(13).replace(' ','T')+':00Z').toISOString().slice(0,16)!==value.slice(13).replace(' ','T')))fail('_nota debe ser Actualizado: AAAA-MM-DD HH:mm.');}
 function validateGuide(g){
+ if(Object.hasOwn(g,'_nota'))validNote(g._nota);
  if(Object.hasOwn(g,'audio_guide')&&(typeof g.audio_guide!=='string'||g.audio_guide.length>80000))fail('audio_guide debe ser texto de hasta 80.000 caracteres.');
  for(const k of['reviewed_at','checked_at'])if(g[k]!=null&&(typeof g[k]!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(g[k])||Number.isNaN(Date.parse(g[k]))||new Date(g[k]).toISOString().slice(0,10)!==g[k]))fail('Fecha no válida.');
  if(g.sources!=null){if(!Array.isArray(g.sources))fail('sources debe ser una lista.');for(const s of g.sources){let u;try{u=new URL(typeof s==='string'?s:s.url);}catch{fail('Fuente HTTPS no válida.');}if(u.protocol!=='https:'||u.username||u.password||[...u.searchParams.keys()].some(secret))fail('Fuente HTTPS no válida.');}}
@@ -27,20 +29,22 @@ export function fullSnapshot({pin,records=[],pending=[],conflicts=[],canEdit=fal
  if(!pin||pin.kind!=='places_of_interest'||pin.deleted_at)fail('El lugar no está disponible.');
  const found=records.filter(r=>r.kind==='app_settings'&&r.data?.type==='place_guide'&&r.data.place_id===pin.id);if(found.length>1||found[0]?.deleted_at)fail('Asociación de guía inválida.');
  const g=guideFor(records,pin.id),project=r=>({id:r.id,trip_id:r.trip_id,kind:r.kind,version:r.version||0,data:clean(r.data)});
- const value={format:FULL_FORMAT,pin:project(pin),guide:g?project(g):{id:null,trip_id:pin.trip_id,kind:'app_settings',version:0,data:{type:'place_guide',place_id:pin.id,poi_code:pin.data.poi_code||null,name:pin.data.name,guide:{}}}};
+ const value={_nota:g?.data.guide?._nota||'',format:FULL_FORMAT,pin:project(pin),guide:g?project(g):{id:null,trip_id:pin.trip_id,kind:'app_settings',version:0,data:{type:'place_guide',place_id:pin.id,poi_code:pin.data.poi_code||null,name:pin.data.name,guide:{}}}};
+ delete value.guide.data.guide._nota;
  const ids=new Set([pin.id,g?.id]);return{value,text:JSON.stringify(value,null,2),fingerprint:JSON.stringify([pin,g||null]),guideId:g?.id||null,canEdit,serverReady,pending:pending.some(r=>ids.has(r.record_id)),conflicts:conflicts.some(r=>ids.has(r.record_id)&&!r.deleted_at&&!r.resolved_at)};
 }
 export function validateFull(text,base,current=base){
  if(typeof text!=='string'||new TextEncoder().encode(text).length>400000)fail('JSON demasiado grande (400 KB).');let p;try{p=JSON.parse(text);}catch{fail('JSON inválido.');}
- if(!obj(p)||p.format!==FULL_FORMAT||Object.keys(p).some(k=>!['format','pin','guide'].includes(k)))fail('Formato no válido.');
+ if(!obj(p)||p.format!==FULL_FORMAT||Object.keys(p).some(k=>!['_nota','format','pin','guide'].includes(k)))fail('Formato no válido.');
  const changes=[],place={},guide={};
+ if(Object.hasOwn(p,'_nota')){validNote(p._nota);if(p.guide?.data?.guide&&Object.hasOwn(p.guide.data.guide,'_nota')&&p.guide.data.guide._nota!==p._nota)fail('_nota repetida con valores distintos.');if(p._nota!==base.value._nota){guide._nota=p._nota;changes.push({field:'_nota',before:base.value._nota,after:p._nota});}}
  for(const group of['pin','guide']){
   if(!Object.hasOwn(p,group))continue;const r=p[group],old=base.value[group];
   if(!obj(r)||Object.keys(r).some(k=>!['id','trip_id','kind','version','data'].includes(k)))fail('Registro no válido.');
   for(const k of['id','trip_id','kind','version'])if(!Object.hasOwn(r,k)||!sameGuide(r[k],old[k]))fail('Identidad o versión protegida: '+group+'.'+k);
   if(!obj(r.data))fail('data debe ser un objeto.');
   if(group==='pin')for(const[k,v]of Object.entries(r.data)){if(sameGuide(v,old.data[k]))continue;if(!PLACE_FIELDS.includes(k))fail('Campo del lugar protegido: '+k);place[k]=v;changes.push({field:'pin.data.'+k,before:old.data[k],after:v});}
-  else{for(const[k,v]of Object.entries(r.data))if(k!=='guide'&&!sameGuide(v,old.data[k]))fail('Identidad de guía protegida.');if(Object.hasOwn(r.data,'guide'))Object.assign(guide,delta(old.data.guide,r.data.guide,'guide.data.guide',changes,true));}
+  else{for(const[k,v]of Object.entries(r.data))if(k!=='guide'&&!sameGuide(v,old.data[k]))fail('Identidad de guía protegida.');if(Object.hasOwn(r.data,'guide'))Object.assign(guide,delta({...old.data.guide,_nota:base.value._nota},r.data.guide,'guide.data.guide',changes,true));}
  }
  for(const[k,v]of Object.entries(place)){
   if(['assigned_dates','assigned_areas'].includes(k)){if(!Array.isArray(v)||v.length>100||v.some(x=>typeof x!=='string'||x.length>250))fail('Asignación inválida.');if(k==='assigned_dates'&&v.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x)||Number.isNaN(Date.parse(x))||new Date(x).toISOString().slice(0,10)!==x))fail('Fecha de asignación inválida.');}
